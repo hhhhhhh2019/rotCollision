@@ -29,8 +29,6 @@ const rotate = function(v, a) {
 	);
 }
 
-const swap = function(a,b) {let tmp=a; a=b; b=a;};
-
 const sum = function(a, b) {return vec(a.x + b.x, a.y + b.y)};
 const sub = function(a, b) {return vec(a.x - b.x, a.y - b.y)};
 const mul = function(a, b) {return vec(a.x * b.x, a.y * b.y)};
@@ -131,53 +129,7 @@ class Rect {
 			let aby = proj4p2y(ap1, ap2, ap3, ap4, i.angle);
 			
 			let bax = proj4p2x(bp1, bp2, bp3, bp4, this.angle);
-			let bay = proj4p2y(bp1, bp2, bp3, bp4, this.angle);
-			
-			
-			ctx.save();
-			
-			ctx.translate(this.pos.x, this.pos.y);
-			ctx.rotate(this.angle);
-			
-			ctx.strokeStyle = "green";
-			ctx.lineWidth = 2;
-			
-			ctx.beginPath();
-			ctx.moveTo(-50, 0);
-			ctx.lineTo(50, 0);
-			ctx.stroke();
-			
-			ctx.strokeStyle = this.color;
-			ctx.lineWidth = 3;
-			
-			ctx.beginPath();
-			ctx.moveTo(bax[0], 0);
-			ctx.lineTo(bax[1], 0);
-			ctx.stroke();
-			ctx.restore();
-
-			
-			ctx.save();
-			ctx.translate(this.pos.x, this.pos.y);
-			ctx.rotate(this.angle);
-			
-			ctx.strokeStyle = "yellow";
-			ctx.lineWidth = 2;
-			
-			ctx.beginPath();
-			ctx.moveTo(0, -50);
-			ctx.lineTo(0, 50);
-			ctx.stroke();
-			
-			ctx.strokeStyle = this.color;
-			ctx.lineWidth = 2;
-			
-			ctx.beginPath();
-			ctx.moveTo(0, bay[0]);
-			ctx.lineTo(0, bay[1]);
-			ctx.stroke();
-			ctx.restore();
-			
+			let bay = proj4p2y(bp1, bp2, bp3, bp4, this.angle);		
 			
 			
 			if (abx[0] > i.size.x / 2) continue;
@@ -210,8 +162,8 @@ class Rect {
 
 
 const objs = [
-	new Rect(vec(170,120), vec(20,20), 0, vec(0,1), "red"),
-	new Rect(vec(170,180), vec(90,20), 0, vec(0,0), "blue")
+	new Rect(vec(120,120), vec(20,20), -Math.PI / 4, vec(0,1), "red"),
+	new Rect(vec(170,180), vec(90,20), -Math.PI / 3, vec(0,0), "blue")
 ];
 
 const update = function() {
@@ -220,7 +172,6 @@ const update = function() {
 	for (let i of objs) {
 		i.move(objs);
 		i.draw();
-		i.angle += Math.PI * 0.001;
 	}
 	
 	requestAnimationFrame(update);
