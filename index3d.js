@@ -52,7 +52,7 @@ const makeRotMatrix = function(a) {
 }
 
 
-const vec = function(x, y=x, z=x, w) {
+const vec = function(x, y=x, z, w) {
 	return {x: x || 0, y: y || 0, z: z || 0, w: w || 0};
 }
 
@@ -88,6 +88,10 @@ const rotateZ = function(v, a) {
 		v.x * Math.sin(a) + v.y * Math.cos(a),
 		v.z
 	);
+}
+
+const rotate = function(v, a) {
+	return rotateZ(rotateY(rotateX(v, a.x), a.y), a.z);
 }
 
 
@@ -157,11 +161,12 @@ const vert_shader = `
 
 	uniform mat4 projMat;
 	uniform mat4 objMvMat;
+	uniform mat4 objRotMat;
 	uniform mat4 camMvMat;
 	uniform mat4 camRotMat;
 
 	void main() {
-		gl_Position = projMat * camRotMat * camMvMat * objMvMat * vec4(aVertexPosition, 1);
+		gl_Position = projMat * camRotMat * camMvMat * objMvMat * objRotMat * vec4(aVertexPosition, 1);
 	}
 `;
 
@@ -275,12 +280,12 @@ const proj8p = function(a, b, c, d, e, f, g, h, bx, by) {
 }
 
 const proj4p2x = function(a,b,c,d, angle) {
-	let axis = rotate(vec(1,0), angle);
+	let axis = rotate(vec(1,0,0), vec(0,0,angle));
 
-	let ap = rotate(proj(a, axis), -angle).x;
-	let bp = rotate(proj(b, axis), -angle).x;
-	let cp = rotate(proj(c, axis), -angle).x;
-	let dp = rotate(proj(d, axis), -angle).x;
+	let ap = rotate(proj(a, axis), vec(0,0,-angle)).x;
+	let bp = rotate(proj(b, axis), vec(0,0,-angle)).x;
+	let cp = rotate(proj(c, axis), vec(0,0,-angle)).x;
+	let dp = rotate(proj(d, axis), vec(0,0,-angle)).x;
 	
 	return [
 		Math.min(Math.min(bp, Math.min(cp, dp)), ap),
@@ -289,12 +294,12 @@ const proj4p2x = function(a,b,c,d, angle) {
 }
 
 const proj4p2y = function(a,b,c,d, angle) {
-	let axis = rotate(vec(0,1), angle);
+	let axis = rotate(vec(0,1,0), vec(0,0,angle));
 
-	let ap = rotate(proj(a, axis), -angle).y;
-	let bp = rotate(proj(b, axis), -angle).y;
-	let cp = rotate(proj(c, axis), -angle).y;
-	let dp = rotate(proj(d, axis), -angle).y;
+	let ap = rotate(proj(a, axis), vec(0,0,-angle)).y;
+	let bp = rotate(proj(b, axis), vec(0,0,-angle)).y;
+	let cp = rotate(proj(c, axis), vec(0,0,-angle)).y;
+	let dp = rotate(proj(d, axis), vec(0,0,-angle)).y;
 	
 	return [
 		Math.min(Math.min(bp, Math.min(cp, dp)), ap),
@@ -304,29 +309,29 @@ const proj4p2y = function(a,b,c,d, angle) {
 
 const check_collide = function(a, b) {
 	let ap1 = sub(sum(rotateZ(vec(-a.size.x / 2,
-									-a.size.y / 2), a.angle.z), a.pos), b.pos);
+									-a.size.y / 2), a.angle.x), a.pos), b.pos);
 	let ap2 = sub(sum(rotateZ(vec(a.size.x / 2,
-									-a.size.y / 2), a.angle.z), a.pos), b.pos);
+									-a.size.y / 2), a.angle.x), a.pos), b.pos);
 	let ap3 = sub(sum(rotateZ(vec(a.size.x / 2,
-									a.size.y / 2), a.angle.z), a.pos), b.pos);
+									a.size.y / 2), a.angle.x), a.pos), b.pos);
 	let ap4 = sub(sum(rotateZ(vec(-a.size.x / 2,
-									a.size.y / 2), a.angle.z), a.pos), b.pos);
+									a.size.y / 2), a.angle.x), a.pos), b.pos);
 	
 	let bp1 = sub(sum(rotateZ(vec(-b.size.x / 2,
 							-b.size.y / 2), b.angle.z), b.pos), a.pos);
-	let bp2 = sub(sum(rotateZ(vec(i.size.x / 2,
+	let bp2 = sub(sum(rotateZ(vec(b.size.x / 2,
 							-b.size.y / 2), b.angle.z), b.pos), a.pos);
-	let bp3 = sub(sum(rotateZ(vec(i.size.x / 2,
+	let bp3 = sub(sum(rotateZ(vec(b.size.x / 2,
 							b.size.y / 2), b.angle.z), b.pos), a.pos);
-	let bp4 = sub(sum(rotateZ(vec(-i.size.x / 2,
+	let bp4 = sub(sum(rotateZ(vec(-b.size.x / 2,
 							b.size.y / 2), b.angle.z), b.pos), a.pos);
 	
 	
-	let abx = proj4p2x(ap1, ap2, ap3, ap4, b.angle);
-	let aby = proj4p2y(ap1, ap2, ap3, ap4, b.angle);
+	let abx = proj4p2x(ap1, ap2, ap3, ap4, -b.angle.z);
+	let aby = proj4p2y(ap1, ap2, ap3, ap4, -b.angle.z);
 	
-	let bax = proj4p2x(bp1, bp2, bp3, bp4, a.angle);
-	let bay = proj4p2y(bp1, bp2, bp3, bp4, a.angle);		
+	let bax = proj4p2x(bp1, bp2, bp3, bp4, -a.angle.z);
+	let bay = proj4p2y(bp1, bp2, bp3, bp4, -a.angle.z);
 	
 	
 	if (abx[0] > b.size.x / 2) return false;
@@ -392,6 +397,8 @@ class Rect {
 			0,0,0,1
 		);
 
+		const rotMat = makeRotMatrix(this.angle);
+
 		const camMvMat = matrix(
 			1,0,0,-camPos.x,
 			0,1,0,-camPos.y,
@@ -402,6 +409,7 @@ class Rect {
 		const camRotMat = makeRotMatrix(camRot);
 
 		setUniform(prog, "objMvMat", mvMat, "mat4");
+		setUniform(prog, "objRotMat", rotMat, "mat4");
 		setUniform(prog, "camMvMat", camMvMat, "mat4");
 		setUniform(prog, "camRotMat", camRotMat, "mat4");
 		setUniform(prog, "color", this.color, "vec3");
@@ -423,14 +431,99 @@ class Rect {
 		gl.flush();
 	}
 
-	check_collide(objs) {
+	check_collide_obj(obj) {
+		let ap1 = sub(sum(rotate(div(this.size, vec(-2,-2,-2)), this.angle), this.pos), obj.pos);
+		let ap2 = sub(sum(rotate(div(this.size, vec(2,-2,-2)), this.angle), this.pos), obj.pos);
+		let ap3 = sub(sum(rotate(div(this.size, vec(-2,2,-2)), this.angle), this.pos), obj.pos);
+		let ap4 = sub(sum(rotate(div(this.size, vec(2,2,-2)), this.angle), this.pos), obj.pos);
+		let ap5 = sub(sum(rotate(div(this.size, vec(-2,-2,2)), this.angle), this.pos), obj.pos);
+		let ap6 = sub(sum(rotate(div(this.size, vec(2,-2,2)), this.angle), this.pos), obj.pos);
+		let ap7 = sub(sum(rotate(div(this.size, vec(-2,2,2)), this.angle), this.pos), obj.pos);
+		let ap8 = sub(sum(rotate(div(this.size, vec(2,2,2)), this.angle), this.pos), obj.pos);
+
+		let bp1 = sub(sum(rotate(div(obj.size, vec(-2,-2,-2)), obj.angle), obj.pos), this.pos);
+		let bp2 = sub(sum(rotate(div(obj.size, vec(2,-2,-2)), obj.angle), obj.pos), this.pos);
+		let bp3 = sub(sum(rotate(div(obj.size, vec(-2,2,-2)), obj.angle), obj.pos), this.pos);
+		let bp4 = sub(sum(rotate(div(obj.size, vec(2,2,-2)), obj.angle), obj.pos), this.pos);
+		let bp5 = sub(sum(rotate(div(obj.size, vec(-2,-2,2)), obj.angle), obj.pos), this.pos);
+		let bp6 = sub(sum(rotate(div(obj.size, vec(2,-2,2)), obj.angle), obj.pos), this.pos);
+		let bp7 = sub(sum(rotate(div(obj.size, vec(-2,2,2)), obj.angle), obj.pos), this.pos);
+		let bp8 = sub(sum(rotate(div(obj.size, vec(2,2,2)), obj.angle), obj.pos), this.pos);
+
+
+		let pa1a = proj8p(ap1, ap2, ap3, ap4, ap5, ap6, ap7, ap8, rotate(vec(1,0,0), this.angle), rotate(vec(0,1,0), this.angle));
+		let pb1a = proj8p(bp1, bp2, bp3, bp4, bp5, bp6, bp7, bp8, rotate(vec(1,0,0), this.angle), rotate(vec(0,1,0), this.angle));
+
+		let pa2a = proj8p(ap1, ap2, ap3, ap4, ap5, ap6, ap7, ap8, rotate(vec(1,0,0), this.angle), rotate(vec(0,0,1), this.angle));
+		let pb2a = proj8p(bp1, bp2, bp3, bp4, bp5, bp6, bp7, bp8, rotate(vec(1,0,0), this.angle), rotate(vec(0,0,1), this.angle));
+
+
+
+		let pa1a_pos = proj2plane(this.pos, rotate(vec(1,0,0), this.angle), rotate(vec(0,1,0), this.angle));
+		let pb1a_pos = proj2plane(obj.pos, rotate(vec(1,0,0), this.angle), rotate(vec(0,1,0), this.angle));
 		
+		let pa1a_size = vec(0,0);
+
+		for (let i of pa1a) {
+			let p = sub(sum(rotateZ(i, -this.angle.z), pb1a_pos), pa1a_pos);
+			if (Math.abs(p.x) > pa1a_size.x) pa1a_size.x = Math.abs(p.x) * 2;
+			if (Math.abs(p.y) > pa1a_size.y) pa1a_size.y = Math.abs(p.y) * 2;
+		}
+
+		
+		let pb1a_size = vec(0,0);
+
+		for (let i of pb1a) {
+			let p = sub(sum(rotateZ(i, -obj.angle.z), pa1a_pos), pb1a_pos);
+			if (Math.abs(p.x) > pb1a_size.x) pb1a_size.x = Math.abs(p.x) * 2;
+			if (Math.abs(p.y) > pb1a_size.y) pb1a_size.y = Math.abs(p.y) * 2;
+		}
+
+
+		let pa1a_rect = new Rect(pa1a_pos, pa1a_size, vec(0,0,this.angle.z), null, null);
+		let pb1a_rect = new Rect(pb1a_pos, pb1a_size, vec(0,0,obj.angle.z), null, null);
+
+
+
+		let pa2a_pos = proj2plane(this.pos, rotate(vec(1,0,0), this.angle), rotate(vec(0,0,1), this.angle));
+		let pb2a_pos = proj2plane(obj.pos, rotate(vec(1,0,0), this.angle), rotate(vec(0,0,1), this.angle));
+		
+		let pa2a_size = vec(0,0);
+
+		for (let i of pa2a) {
+			let p = sub(sum(rotateZ(i, -this.angle.y), pb2a_pos), pa2a_pos);
+			if (Math.abs(p.x) > pa2a_size.x) pa1a_size.x = Math.abs(p.x) * 2;
+			if (Math.abs(p.y) > pa2a_size.y) pa1a_size.y = Math.abs(p.y) * 2;
+		}
+
+		
+		let pb2a_size = vec(0,0);
+
+		for (let i of pb2a) {
+			let p = sub(sum(rotateZ(i, -obj.angle.y), pa2a_pos), pb2a_pos);
+			if (Math.abs(p.x) > pb2a_size.x) pb2a_size.x = Math.abs(p.x) * 2;
+			if (Math.abs(p.y) > pb2a_size.y) pb2a_size.y = Math.abs(p.y) * 2;
+		}
+
+
+		let pa2a_rect = new Rect(pa2a_pos, pa2a_size, vec(0,0,this.angle.y), null, null);
+		let pb2a_rect = new Rect(pb2a_pos, pb2a_size, vec(0,0,obj.angle.y), null, null);
+
+
+		return check_collide(pa1a_rect, pb1a_rect) && check_collide(pa2a_rect, pb2a_rect);
+	}
+
+	check_collide(objs) {
+		for (let i of objs) {
+			if (i == this) continue;
+			if (this.check_collide_obj(i)) return true;
+		}
 	}
 
 	move(objs) {
 		if (this.check_collide(objs)) return;
 
-		let vel = rotateZ(rotateY(rotateX(this.vel, this.angle.x), this.angle.y), this.angle.z);
+		let vel = rotate(this.vel, this.angle);
 		
 		this.pos.x += vel.x;
 		this.pos.y += vel.y;
@@ -476,9 +569,12 @@ document.onkeyup = function(e) {
 
 
 const objs = [
-	new Rect(vec(1,0,-1), vec(0.5), vec(0), vec(-0.01,0,0), vec(0,1,0)),
-	new Rect(vec(-1,0,-1), vec(0.5), vec(0), vec(0), vec(0,0,1))
+	new Rect(vec(1,0,-1), vec(0.5,0.5,0.5), vec(0,-Math.PI/16,0), vec(-0.01,0,0), vec(0,1,0)),
+	new Rect(vec(-1,0,-1), vec(0.5,0.5,1), vec(Math.PI/8,-Math.PI/6,0), vec(0), vec(0,0,1))
 ]
+
+
+var run = true;
 
 
 const update = function() {
@@ -498,7 +594,8 @@ const update = function() {
 		i.draw();
 	}
 	
-	requestAnimationFrame(update);
+	if (run)
+		requestAnimationFrame(update);
 }
 
 update();
