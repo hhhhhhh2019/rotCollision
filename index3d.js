@@ -457,6 +457,9 @@ class Rect {
 		let pa2a = proj8p(ap1, ap2, ap3, ap4, ap5, ap6, ap7, ap8, rotate(vec(1,0,0), this.angle), rotate(vec(0,0,1), this.angle));
 		let pb2a = proj8p(bp1, bp2, bp3, bp4, bp5, bp6, bp7, bp8, rotate(vec(1,0,0), this.angle), rotate(vec(0,0,1), this.angle));
 
+		let pa3a = proj8p(ap1, ap2, ap3, ap4, ap5, ap6, ap7, ap8, rotate(vec(0,1,0), this.angle), rotate(vec(0,0,1), this.angle));
+		let pb3a = proj8p(bp1, bp2, bp3, bp4, bp5, bp6, bp7, bp8, rotate(vec(0,1,0), this.angle), rotate(vec(0,0,1), this.angle));
+
 
 
 		let pa1a_pos = proj2plane(this.pos, rotate(vec(1,0,0), this.angle), rotate(vec(0,1,0), this.angle));
@@ -492,8 +495,8 @@ class Rect {
 
 		for (let i of pa2a) {
 			let p = sub(sum(rotateZ(i, -this.angle.y), pb2a_pos), pa2a_pos);
-			if (Math.abs(p.x) > pa2a_size.x) pa1a_size.x = Math.abs(p.x) * 2;
-			if (Math.abs(p.y) > pa2a_size.y) pa1a_size.y = Math.abs(p.y) * 2;
+			if (Math.abs(p.x) > pa2a_size.x) pa2a_size.x = Math.abs(p.x) * 2;
+			if (Math.abs(p.y) > pa2a_size.y) pa2a_size.y = Math.abs(p.y) * 2;
 		}
 
 		
@@ -510,7 +513,33 @@ class Rect {
 		let pb2a_rect = new Rect(pb2a_pos, pb2a_size, vec(0,0,obj.angle.y), null, null);
 
 
-		return check_collide(pa1a_rect, pb1a_rect) && check_collide(pa2a_rect, pb2a_rect);
+
+		let pa3a_pos = proj2plane(this.pos, rotate(vec(0,1,0), this.angle), rotate(vec(0,0,1), this.angle));
+		let pb3a_pos = proj2plane(obj.pos, rotate(vec(0,1,0), this.angle), rotate(vec(0,0,1), this.angle));
+		
+		let pa3a_size = vec(0,0);
+
+		for (let i of pa3a) {
+			let p = sub(sum(rotateZ(i, -this.angle.x), pb3a_pos), pa3a_pos);
+			if (Math.abs(p.x) > pa3a_size.x) pa3a_size.x = Math.abs(p.x) * 2;
+			if (Math.abs(p.y) > pa3a_size.y) pa3a_size.y = Math.abs(p.y) * 2;
+		}
+
+		
+		let pb3a_size = vec(0,0);
+
+		for (let i of pb3a) {
+			let p = sub(sum(rotateZ(i, -obj.angle.x), pa3a_pos), pb3a_pos);
+			if (Math.abs(p.x) > pb3a_size.x) pb3a_size.x = Math.abs(p.x) * 2;
+			if (Math.abs(p.y) > pb3a_size.y) pb3a_size.y = Math.abs(p.y) * 2;
+		}
+
+
+		let pa3a_rect = new Rect(pa3a_pos, pa3a_size, vec(0,0,this.angle.x), null, null);
+		let pb3a_rect = new Rect(pb3a_pos, pb3a_size, vec(0,0,obj.angle.x), null, null);
+
+
+		return check_collide(pa1a_rect, pb1a_rect) && check_collide(pa2a_rect, pb2a_rect) && check_collide(pa3a_rect, pb3a_rect);
 	}
 
 	check_collide(objs) {
@@ -569,8 +598,8 @@ document.onkeyup = function(e) {
 
 
 const objs = [
-	new Rect(vec(1,0,-1), vec(0.5,0.5,0.5), vec(0,-Math.PI/16,0), vec(-0.01,0,0), vec(0,1,0)),
-	new Rect(vec(-1,0,-1), vec(0.5,0.5,1), vec(Math.PI/8,-Math.PI/6,0), vec(0), vec(0,0,1))
+	new Rect(vec(1,0,-1), vec(0.5,0.5,0.5), vec(0,0,0), vec(-0.01,0,0), vec(0,1,0)),
+	new Rect(vec(-1,0,-1), vec(0.5,0.5,1), vec(Math.PI/8,-Math.PI/6,Math.PI/4), vec(0), vec(0,0,1))
 ]
 
 
